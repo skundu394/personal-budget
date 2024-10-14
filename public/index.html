@@ -192,10 +192,14 @@
             axios.get('/budget')
             .then(function (res){
                 console.log(res.data);
-            for (var i=0; i< res.data.myBudget.length; i++) {
-                datasource.datasets[0].data[i] = res.data.myBudget[i].budget;
-                datasource.labels[i] = res.data.myBudget[i].title;
-            }
+
+                datasource.datasets[0].data = res.data.map(item => item.budget); // Map the title value
+                datasource.labels = res.data.map(item => item.title); // Map the budget value
+                
+            // for (var i=0; i< res.data.myBudget.length; i++) {
+            //     datasource.datasets[0].data[i] = res.data.myBudget[i].budget;
+            //     datasource.labels[i] = res.data.myBudget[i].title;
+            // }
             createChart();
         });
         }
@@ -236,6 +240,10 @@
             axios.get('/cake-varieties')
             .then(function (res){
                 console.log(res.data);
+                
+                donutDatasource.datasets[0].data = res.data.map(item => item.cost); // Map the cost values
+                donutDatasource.labels = res.data.map(item => item.flavor); // Map the flavor names
+
             createDonutChart();
         });
         }

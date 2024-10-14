@@ -1,56 +1,105 @@
 const express = require('express');
-const fs = require('fs').promises;
+const mongoose = require('mongoose');
+const Budget = require('./models/budget');
+const CakeVariety = require('./models/cake_variety');  // Ensure this path is correct
 const app = express();
 const port = 3000;
 
-app.use('/', express.static('public'));
+app.use(express.json());  // Enable JSON parsing for request bodies
+app.use(express.static('public'));  // Serve static files from 'public' directory
 
-// Async function to load the budget data from the JSON file
-async function loadBudgetData() {
-    try {
-        // Read the file and parse the JSON content
-        const data = await fs.readFile('public/myBudget.json', 'utf8');
-        return JSON.parse(data); // Convert the JSON string into an object
-    } catch (error) {
-        console.error('Error reading budget data:', error);
-        throw error; // Rethrow to handle error in route
+// MongoDB URL and client initialization
+const url = 'mongodb://localhost:27017/mongodb_demo';
+
+// Connect to MongoDB using Mongoose
+mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => {
+        console.log("Connected to the database");
+    })
+    .catch((connectionError) => {
+        console.log(connectionError);
+    });
+
+// POST route to add a new budget entry
+app.post('/budget/add', async (req, res) => {
+    const { title, budget, color } = req.body;
+
+    if (!title || !budget|| !color) {
+        return res.status(400).json({ error: 'Please provide all required fields: title, budget, and color' });
     }
-}
 
-// Route to return budget data from the JSON file
+    try {
+        const newBudget = new Budget({ title, budget, color });
+        await newBudget.save();
+        res.status(201).json({ message: 'Budget entry added successfully', newBudget });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to add budget entry' });
+    }
+});
+
+// Route to get all budget entries
 app.get('/budget', async (req, res) => {
     try {
-        const budget = await loadBudgetData(); // Load budget data from file
-        res.json(budget); // Send the data as JSON
+        const budgetEntries = await Budget.find(); // Fetch all budget entries
+        res.json(budgetEntries); // Send the data as JSON
     } catch (error) {
-        res.status(500).json({ error: 'Failed to load budget data' }); // Handle error
+        res.status(500).json({ error: 'Failed to load budget data' });
     }
 });
 
-app.get('/hello', (req, res) => {
-    res.send('Hello World!');
-});
+// POST route to add a new cake variety
+app.post('/cake-varieties/add', async (req, res) => {
+    const { flavor, cost, color } = req.body;
 
-async function loadCakeVarietiesData() {
+    if (!flavor || !cost || !color) {
+        return res.status(400).json({ error: 'Please provide all required fields: flavor, cost, and color' });
+    }
+
     try {
-        // Read the file and parse the JSON content
-        const data = await fs.readFile('public/cakeVarieties.json', 'utf8');
-        return JSON.parse(data); // Convert the JSON string into an object
+        const newCakeVariety = new CakeVariety({ flavor, cost, color });
+        await newCakeVariety.save();
+        res.status(201).json({ message: 'Cake variety added successfully', newCakeVariety });
     } catch (error) {
-        console.error('Error reading Cake Varieties data:', error);
-        throw error; // Rethrow to handle error in route
+        res.status(500).json({ error: 'Failed to add cake variety' });
     }
-}
+});
 
+// Route to get all cake varieties
 app.get('/cake-varieties', async (req, res) => {
     try {
-        const cakeVarieties = await loadCakeVarietiesData();
+        const cakeVarieties = await CakeVariety.find(); // Fetch all cake varieties
         res.json(cakeVarieties); // Send the data as JSON
     } catch (error) {
-        res.status(500).json({ error: 'Failed to load Cake Varieties data' }); // Handle error
+        res.status(500).json({ error: 'Failed to load Cake Varieties data' });
+    }
+});
+
+// New Route to update a specific cake variety based on flavor
+app.put('/cake-varieties/update', async (req, res) => {
+    const { flavor, newCost } = req.body;
+
+    if (!flavor || !newCost) {
+        return res.status(400).json({ error: 'Please provide a flavor and the new cost' });
+    }
+
+    try {
+        // Update the cost of the specified flavor
+        const updatedCake = await CakeVariety.findOneAndUpdate(
+            { flavor: flavor }, // Find cake variety by flavor
+            { $set: { cost: newCost } }, // Set the new cost
+            { new: true, runValidators: true } // Return the updated document
+        );
+
+        if (updatedCake) {
+            res.json({ message: 'Cake variety updated successfully', updatedCake });
+        } else {
+            res.status(404).json({ message: 'Cake variety not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update cake variety' });
     }
 });
 
 app.listen(port, () => {
-    console.log('Example app listening at http://localhost:${port}');
+    console.log(`Example app listening at http://localhost:${port}`);
 });
